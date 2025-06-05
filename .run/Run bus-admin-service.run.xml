@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run bus-admin-service" type="JUnit" factoryName="JUnit" show_console_on_std_err="true" show_console_on_std_out="true">
+    <module name="bus-admin-service" />
+    <option name="PACKAGE_NAME" value="com.sanjayp.busservice" />
+    <option name="MAIN_CLASS_NAME" value="" />
+    <option name="METHOD_NAME" value="" />
+    <option name="TEST_OBJECT" value="package" />
+    <option name="VM_PARAMETERS" value="-Dspring.profile.active=dev" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
