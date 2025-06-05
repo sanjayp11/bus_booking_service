@@ -1,9 +1,9 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="BusServiceApplication" type="Application" factoryName="Application" nameIsGenerated="true">
+  <configuration default="false" name="BusBookingApplication" type="Application" factoryName="Application">
     <envs>
       <env name="spring.profiles.active" value="dev" />
     </envs>
-    <option name="MAIN_CLASS_NAME" value="com.sanjayp.busservice.BusServiceApplication" />
+    <option name="MAIN_CLASS_NAME" value="com.sanjayp.busservice.BookingApplication" />
     <module name="bus-admin-service" />
     <option name="PROGRAM_PARAMETERS" value="-Dspring.profile.active=dev" />
     <extension name="coverage">

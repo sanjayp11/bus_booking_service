@@ -1,28 +1,19 @@
 package com.sanjayp.busservice;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 //import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 //import io.github.resilience4j.retry.annotation.Retry;
 //import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
 //import org.springframework.retry.annotation.CircuitBreaker;
 import org.springframework.web.bind.annotation.*;
 //import org.springframework.web.reactive.function.client.WebClient;
 //import reactor.core.publisher.Mono;
 
-import java.sql.Date;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+import org.springframework.web.reactive.function.client.WebClient;
 //@Tag(name = "Social Service", description = "Social Service APIs")
 @RestController
 @RequestMapping("/api/v1")
@@ -31,52 +22,83 @@ public class MainRestController {
     private static final Logger log = LoggerFactory.getLogger(MainRestController.class);
 
     @Autowired
-    BusRouteRepository busRouteRepository;
+    BookingRepository bookingRepository;
 
     @Autowired
-    BusRoute busRoute;
+    Booking booking;
 
-    @PostMapping(value = "/admin-service/")
-    public ResponseEntity<String> create(@RequestBody BusRouteView busRouteView) {
+    @Autowired
+    private ApplicationContext ctx;
 
-        BusRoute busRoute = new BusRoute();
-        busRoute.setId(busRouteView.getId());
-        busRoute.setSource(busRouteView.getSource());
-        busRoute.setDestination(busRouteView.getDestination());
-        busRoute.setPrice(busRouteView.getPrice());
-        busRouteRepository.save(busRoute);
-        return ResponseEntity.ok().body("Bus Route created successfully for id: " + busRouteView.getId());
+    @Autowired
+    private MessageSender messageSender;
+
+    @PostMapping(value = "/bus-booking-service/")
+    public ResponseEntity<String> create(@RequestBody BookingView bookingView) {
+
+        WebClient authValidateWebClient = ctx.getBean("inventoryValidateWebClient", WebClient.class);
+
+//        log.info("Calling auth-service to validate token: " + token);
+        // forward a request to the auth service for validation
+        String authResponse = authValidateWebClient.get()
+                .retrieve()
+                .bodyToMono(String.class)
+                .block(); // Thread is Blocked until the response is received | SYNC
+
+        log.info("Response from auth-service: " + authResponse);
+        String finalMsg = "Requested seats not available";
+        if(authResponse != null) {
+            Long currentInventory = Long.parseLong(authResponse);
+            if (bookingView.getNoOfSeats() <= currentInventory) {
+                Booking booking = new Booking();
+                booking.setBusId(bookingView.getBusId());
+                booking.setBookingDate(bookingView.getBookingDate());
+                booking.setSource(bookingView.getSource());
+                booking.setDestination(bookingView.getDestination());
+                booking.setStatus("PENDING");
+                booking.setNoOfSeats(bookingView.getNoOfSeats());
+                Booking bookingCreated = bookingRepository.save(booking);
+
+
+                finalMsg = "Bus Booking created successfully for id: " + bookingCreated.getId();
+                String msg = "{\n" +
+                        "    \"bookingId\":"+bookingCreated.getId()+",\n" +
+                        "    \"paymentDate\":\""+bookingView.getBookingDate()+"\"\n" +
+                        "}";
+                messageSender.sendToQueue(msg);
+            }
+        }
+
+        return ResponseEntity.ok().body(finalMsg);
     }
 
-    @GetMapping("/admin-service/")
+    @GetMapping("/bus-booking-service/")
     public ResponseEntity<?> fetch() {
-        return ResponseEntity.ok().body(busRouteRepository.findAll());
+        return ResponseEntity.ok().body(bookingRepository.findAll());
     }
 
-    @GetMapping("/admin-service/{id}")
+    @GetMapping("/bus-booking-service/{id}")
     public ResponseEntity<?> getById(@PathVariable long id) {
-//        LOGGER.info("Finding product by ID:"+id);
-        return ResponseEntity.ok().body(busRouteRepository.findById(id));
+        return ResponseEntity.ok().body(bookingRepository.findById(id));
     }
 
-
-
-    @PutMapping("/admin-service/")
-    public ResponseEntity<String> update(@RequestBody BusRouteView busRouteView) {
+    @PutMapping("/bus-booking-service/")
+    public ResponseEntity<String> update(@RequestBody BookingView bookingView) {
         // handle the case when the route is not found
-        BusRoute busRoute = busRouteRepository.findById(busRouteView.getId()).orElseGet(BusRoute::new);
-        busRoute.setId(busRouteView.getId());
-        busRoute.setSource(busRouteView.getSource());
-        busRoute.setDestination(busRouteView.getDestination());
-        busRoute.setPrice(busRouteView.getPrice());
-        busRouteRepository.save(busRoute);
-        return ResponseEntity.ok().body("Bus Route updated successfully for id: " + busRouteView.getId());
+        Booking booking = bookingRepository.findById(bookingView.getId()).orElseGet(Booking::new);
+        booking.setBookingDate(bookingView.getBookingDate());
+        booking.setSource(bookingView.getSource());
+        booking.setDestination(bookingView.getDestination());
+        booking.setStatus(bookingView.getStatus());
+        booking.setNoOfSeats(bookingView.getNoOfSeats());
+        bookingRepository.save(booking);
+        return ResponseEntity.ok().body("Bus Booking edited successfully for id: " + bookingView.getId());
     }
 
-    @DeleteMapping("/admin-service/{id}")
+    @DeleteMapping("/bus-booking-service/{id}")
     public ResponseEntity<String> delete(@PathVariable long id) {
-        busRouteRepository.deleteById(id);
-        return ResponseEntity.ok().body("Bus Route deleted successfully for userid: " + id);
+        bookingRepository.deleteById(id);
+        return ResponseEntity.ok().body("Bus Booking deleted successfully for userid: " + id);
     }
 
 

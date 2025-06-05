@@ -6,12 +6,12 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
 
 @SpringBootApplication
 @ServletComponentScan
-public class BusServiceApplication
+public class BookingApplication
 {
 
     public static void main(String[] args)
     {
-        SpringApplication.run(BusServiceApplication.class, args);
+        SpringApplication.run(BookingApplication.class, args);
     }
 
 }
